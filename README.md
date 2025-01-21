@@ -2,6 +2,8 @@
 
 - Login / SignUp
   - Signin/ sign up form
+  - Form Validation using Formik
+  - useRef hook
   - redirect to web page
 - Browser (After authentication)
 
