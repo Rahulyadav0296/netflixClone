@@ -3,9 +3,21 @@ import Header from "../Header/Header";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import MyTextInout from "./MyTextInout";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../../utils/firebase";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { addUser } from "../../utils/userSlice";
 
 function Login() {
   const [isLogin, setIsLogin] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   return (
     <div>
@@ -24,7 +36,7 @@ function Login() {
         }}
         validationSchema={Yup.object({
           name: Yup.string()
-            .max(15, "Must be 15 characters or less")
+            .max(20, "Must be 20 characters or less")
             .required("Required"),
           email: Yup.string()
             .email("Invalid Email Address")
@@ -35,11 +47,60 @@ function Login() {
             .matches(/[a-zA-Z]/, "Password can only contain Latin Letters."),
         })}
         onSubmit={(values, { setSubmitting }) => {
-          // console.log(values);
-          setTimeout(() => {
-            alert(JSON.stringify(values, null, 2));
-            setSubmitting(true);
-          }, 400);
+          if (isLogin) {
+            // Sign up logic
+            createUserWithEmailAndPassword(auth, values.email, values.password)
+              .then((userCredential) => {
+                // Signed up
+                const user = userCredential.user;
+                updateProfile(user, {
+                  displayName: values.name,
+                  photoURL:
+                    "https://images.pexels.com/photos/6894170/pexels-photo-6894170.jpeg?auto=compress&cs=tinysrgb&w=300",
+                })
+                  .then(() => {
+                    // Profile updated!
+                    console.log(user);
+                    const { uid, email, displayName, photoURL } =
+                      auth.currentUser;
+                    dispatch(
+                      addUser({
+                        uid: uid,
+                        email: email,
+                        displayName: displayName,
+                        photoURL: photoURL,
+                      })
+                    );
+                    setErrorMessage(null);
+                    setIsLogin(false);
+                    navigate("/");
+                  })
+                  .catch((error) => {
+                    // An error occurred
+                    setErrorMessage(error);
+                  });
+              })
+              .catch((error) => {
+                const errorCode = error.code;
+                const errorMessage = error.message;
+                setErrorMessage(errorCode + "-" + errorMessage);
+              });
+          } else {
+            // sign in Logic
+            signInWithEmailAndPassword(auth, values.email, values.password)
+              .then((userCredential) => {
+                // Signed in
+                const user = userCredential.user;
+                console.log("After Login: ", user);
+                navigate("/browse");
+                setIsLogin(true);
+              })
+              .catch((error) => {
+                const errorCode = error.code;
+                const errorMessage = error.message;
+                setErrorMessage(errorCode + "-" + errorMessage);
+              });
+          }
         }}
       >
         <Form className="w-3/12 absolute text-white p-12 bg-black my-36 mx-auto right-0 left-0 rounded-lg bg-opacity-80">
@@ -75,6 +136,7 @@ function Login() {
               ? "New to NetFlix? Sign Up Now."
               : "Already Registered? Sign In Now."}
           </p>
+          <p className="text-red-400">{errorMessage}</p>
         </Form>
       </Formik>
     </div>
